@@ -13,7 +13,7 @@ final class CastUi {
 
     static Typeface font(Context c) {
         try {
-            return c.getResources().getFont(R.font.caskaydia);
+            return androidx.core.content.res.ResourcesCompat.getFont(c, R.font.caskaydia);
         } catch (RuntimeException e) {
             return Typeface.MONOSPACE;
         }

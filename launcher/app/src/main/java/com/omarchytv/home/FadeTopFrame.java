@@ -40,7 +40,7 @@ public class FadeTopFrame extends FrameLayout {
         mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
         Typeface tf;
         try {
-            tf = c.getResources().getFont(R.font.caskaydia);
+            tf = androidx.core.content.res.ResourcesCompat.getFont(c, R.font.caskaydia);
         } catch (Exception e) {
             tf = Typeface.MONOSPACE;
         }

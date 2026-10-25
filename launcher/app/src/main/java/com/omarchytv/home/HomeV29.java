@@ -137,7 +137,7 @@ final class HomeV29 extends FrameLayout {
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         a.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
         s = Math.min(dm.heightPixels / 1080f, dm.widthPixels / 1920f);
-        tf = a.getResources().getFont(R.font.caskaydia);
+        tf = androidx.core.content.res.ResourcesCompat.getFont(a, R.font.caskaydia);
         tfBold = Typeface.create(tf, Typeface.BOLD);
         setClipChildren(false);
 

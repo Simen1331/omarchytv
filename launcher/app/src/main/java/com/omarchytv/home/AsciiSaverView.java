@@ -75,7 +75,7 @@ public class AsciiSaverView extends View {
         }
         Typeface tf;
         try {
-            tf = getResources().getFont(R.font.caskaydia);
+            tf = androidx.core.content.res.ResourcesCompat.getFont(getContext(), R.font.caskaydia);
         } catch (Exception e) {
             tf = Typeface.MONOSPACE;
         }
