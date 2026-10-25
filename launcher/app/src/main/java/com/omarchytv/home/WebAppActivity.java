@@ -96,7 +96,7 @@ public class WebAppActivity extends Activity {
         status.setTextSize(13);
         status.setBackgroundColor(Theme.m(0xE616161E));
         status.setPadding((int) (12 * d), (int) (6 * d), (int) (12 * d), (int) (6 * d));
-        status.setTypeface(getResources().getFont(R.font.caskaydia));
+        status.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(this, R.font.caskaydia));
         status.setVisibility(View.GONE);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP | Gravity.END);
