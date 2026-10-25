@@ -252,10 +252,7 @@ public class AskActivity extends Activity implements OmarchyLink.Listener {
             });
         }
 
-        String initCmd = getIntent().getStringExtra("cmd");
-        if (initCmd != null && !initCmd.trim().isEmpty()) {
-            runCommand(initCmd.trim());
-        } else {
+        if (!handleAskIntent(getIntent())) {
             btnVoice.requestFocus();
         }
     }
@@ -951,6 +948,33 @@ public class AskActivity extends Activity implements OmarchyLink.Listener {
         transcript.setSpan(new ForegroundColorSpan(Theme.cur().fgBright), s1, transcript.length(), 0);
         log.setText(transcript);
         scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleAskIntent(intent);
+    }
+
+    /** A "cmd" extra (from the menu or a PC "ask-tv --run") runs immediately; a "prefill" extra
+     *  (a PC/phone "ask-tv") drops the text into the prompt for the user to review and run.
+     *  Returns true when the intent carried either. */
+    private boolean handleAskIntent(Intent intent) {
+        if (intent == null) return false;
+        String cmd = intent.getStringExtra("cmd");
+        if (cmd != null && !cmd.trim().isEmpty()) {
+            runCommand(cmd.trim());
+            return true;
+        }
+        String prefill = intent.getStringExtra("prefill");
+        if (prefill != null && !prefill.trim().isEmpty()) {
+            input.setText(prefill.trim());
+            input.setSelection(input.getText().length());
+            input.requestFocus();
+            return true;
+        }
+        return false;
     }
 
     private void listen() {

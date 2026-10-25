@@ -83,6 +83,9 @@ public final class LinkServer {
         /** 200 done, 409 capability missing right now. Only called with a key from {@link #KEYS}. */
         int key(String key);
 
+        /** Open Grok Bot (AskActivity) with {@code text}: run it when {@code run}, else prefill the input. */
+        void ask(String text, boolean run);
+
         /** One read-modify-write of omarchytv.json (LauncherConfig.update). */
         void editConfig(ConfigEdit edit) throws Exception;
 
@@ -650,6 +653,7 @@ public final class LinkServer {
             else if (themeUpload(req)) retry = limited(req.peer + "|themes", 1, 5_000);
             else if (castUpload(req)) retry = limited(req.peer + "|castfile", 2, 5_000);
             else if ("PUT".equals(req.method) && "/v1/agents".equals(path)) retry = limited(req.peer + "|agents", 2, 5_000);
+            else if ("POST".equals(req.method) && "/v1/ask".equals(path)) retry = limited(req.peer + "|ask", 2, 3_000);
             else if ("PUT".equals(req.method) && "/v1/stats".equals(path)) retry = limited(req.peer + "|stats", 1, 1_500);
             else if ("PUT".equals(req.method) && "/v1/screensaver".equals(path)) retry = limited(req.peer + "|saver", 1, 5_000);
         }
@@ -904,6 +908,12 @@ public final class LinkServer {
             if (!KEYS.contains(key)) return new Response(400, err("bad_key", "unknown key"));
             int s = host.key(key);
             return s == 200 ? new Response(200, ok()) : new Response(409, err("capability_missing", "the TV cannot send " + key + " right now"));
+        }
+        if ("POST".equals(m) && "/v1/ask".equals(p)) {
+            String text = body.optString("text", "").trim();
+            if (text.isEmpty() || text.length() > 2000) return new Response(400, err("bad_request", "text required, <= 2000 chars"));
+            host.ask(text, body.optBoolean("run", false));
+            return new Response(200, ok());
         }
         if ("PUT".equals(m) && "/v1/theme".equals(p)) return theme(body);
         if ("GET".equals(m) && "/v1/banners".equals(p)) return banners(m, null, req);

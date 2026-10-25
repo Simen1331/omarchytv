@@ -665,6 +665,19 @@ public final class OmarchyLink implements LinkServer.Host {
     }
 
     @Override
+    public void ask(String text, boolean run) {
+        final Intent i = new Intent(app, AskActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        i.putExtra(run ? "cmd" : "prefill", text);
+        main.post(() -> {
+            try {
+                app.startActivity(i);
+            } catch (Exception e) {
+                Log.w(TAG, "ask: " + e);
+            }
+        });
+    }
+
+    @Override
     public int key(String key) {
         AudioManager am = app.getSystemService(AudioManager.class);
         switch (key) {
