@@ -17,6 +17,7 @@ import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -953,17 +954,32 @@ public class AskActivity extends Activity implements OmarchyLink.Listener {
     }
 
     private void listen() {
-        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, MainActivity.speechLanguage(this))
-                .putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.ask_prompt));
-        try {
-            startActivityForResult(i, REQ_SPEECH);
-        } catch (ActivityNotFoundException e) {
-            input.requestFocus();
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
+        // Fire OS has no RecognitionService and silently routes ACTION_RECOGNIZE_SPEECH to Alexa,
+        // which returns no text (and so never throws ActivityNotFoundException). Gate on a real
+        // recognizer being present; when there is none, go straight to the on-screen keyboard.
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, MainActivity.speechLanguage(this))
+                    .putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.ask_prompt));
+            try {
+                startActivityForResult(i, REQ_SPEECH);
+                return;
+            } catch (ActivityNotFoundException ignored) {
+            }
         }
+        showInputKeyboard();
+    }
+
+    /** Focus the prompt field and open the on-screen keyboard. The field has
+     *  setShowSoftInputOnFocus(false), and requestFocus() has not settled yet, so the IME is
+     *  shown (forced) from a post. */
+    private void showInputKeyboard() {
+        input.requestFocus();
+        input.post(() -> {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_FORCED);
+        });
     }
 
     @Override
