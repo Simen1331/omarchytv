@@ -168,6 +168,7 @@ fake status or swallow commands.
 | `GET /v1/apps` | ✓ | → `{apps:[{package,label,dock:bool}]}` launcher order, hidden apps excluded |
 | `POST /v1/apps/launch` | ✓ | `{package}` → `{ok:true}` / `404 no_such_app`. Only packages with a leanback launcher intent. |
 | `POST /v1/remote/key` | ✓ | `{key}` → `{ok:true}` / `400 bad_key` / `409 {error:"capability_missing"}` |
+| `POST /v1/ask` | ✓ | `{text, run?}` → `{ok:true}` / `400 bad_request`. Opens Grok Bot with `text`; `run:true` runs it, else it prefills the prompt. `text` ≤ 2000 chars. Rate: 2 per 3 s. |
 | `PUT /v1/theme` | ✓ | Theme → `{ok:true}` / `409 unknown_wallpaper` |
 | `GET /v1/wallpaper` | ✓ | → `{sha256: <hex of current pushed JPEG> \| null}` |
 | `PUT /v1/wallpaper` | ✓ | `Content-Type: image/jpeg`, ≤ 8 MiB, ≤ 3840x2160 → `{sha256}` / `415 not_jpeg` |

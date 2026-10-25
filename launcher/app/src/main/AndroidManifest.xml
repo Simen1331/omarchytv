@@ -104,6 +104,7 @@
             android:name=".AskActivity"
             android:exported="false"
             android:excludeFromRecents="true"
+            android:launchMode="singleTop"
             android:screenOrientation="landscape"
             android:windowSoftInputMode="adjustResize|stateHidden"
             android:theme="@style/Theme.TvHome" />

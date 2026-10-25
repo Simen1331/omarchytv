@@ -144,6 +144,111 @@ def cmd_launch(a, cfg):
     return 0
 
 
+def cmd_ask_tv(a, cfg):
+    text = (a.text if a.text is not None else sys.stdin.read()).strip()
+    if not text:
+        print("omarchy-link: ask-tv <text>  (or pipe text on stdin)", file=sys.stderr)
+        return 2
+    _client(cfg).ask(text, a.run)
+    print(f"Sent to Grok Bot{' and ran it' if a.run else ' (review and run on the TV)'}: {text}")
+    return 0
+
+
+_ASK_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Grok Bot</title><style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;justify-content:center;gap:16px;
+padding:24px;font:17px/1.4 -apple-system,system-ui,sans-serif;background:#1a1b26;color:#c0caf5}
+h1{font-size:20px;margin:0;color:#7aa2f7}
+p{margin:0;color:#565f89;font-size:14px}
+textarea{width:100%;min-height:120px;padding:14px;font:17px/1.4 inherit;border-radius:12px;
+border:1px solid #414868;background:#24283b;color:#c0caf5;resize:vertical}
+button{padding:16px;font-size:18px;font-weight:600;border:0;border-radius:12px;background:#7aa2f7;color:#1a1b26}
+button:active{background:#6a92e7}
+#status{min-height:20px;font-size:14px;color:#9ece6a}
+.err{color:#f7768e!important}
+</style></head><body>
+<h1>Grok Bot</h1>
+<p>Type or tap the microphone on your keyboard to dictate, then send to the TV.</p>
+<textarea id="t" autofocus placeholder="theme jade-horse &middot; wallpaper &middot; what is the weather"></textarea>
+<button id="send">Send to TV</button>
+<div id="status"></div>
+<script>
+var t=document.getElementById('t'),s=document.getElementById('status'),b=document.getElementById('send');
+function send(){var v=t.value.trim();if(!v){return}s.className='';s.textContent='Sending...';b.disabled=true;
+fetch('send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:v})})
+.then(function(r){if(!r.ok){throw new Error('HTTP '+r.status)}return r.json()})
+.then(function(){s.textContent='Sent ✓';t.value='';t.focus()})
+.catch(function(e){s.className='err';s.textContent='Failed: '+e.message})
+.finally(function(){b.disabled=false})}
+b.addEventListener('click',send);
+</script></body></html>"""
+
+
+def cmd_ask_serve(a, cfg):
+    import http.server
+    import socket
+
+    p = config.Pairing.load()
+    if not p.paired:
+        print("omarchy-link: not paired; run: omarchy-link pair", file=sys.stderr)
+        return 2
+    run_default = a.run
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _send(self, code, body, ctype="application/json"):
+            data = body.encode() if isinstance(body, str) else body
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path.split("?")[0] in ("/", "/index.html"):
+                self._send(200, _ASK_PAGE, "text/html; charset=utf-8")
+            else:
+                self._send(404, '{"error":"not_found"}')
+
+        def do_POST(self):
+            if self.path.split("?")[0] != "/send":
+                self._send(404, '{"error":"not_found"}')
+                return
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(n) or b"{}")
+                text = (req.get("text") or "").strip()
+                if not text:
+                    self._send(400, '{"error":"empty"}')
+                    return
+                _client(config.load_config()).ask(text, bool(req.get("run", run_default)))
+                self._send(200, '{"ok":true}')
+            except (ValueError, OSError, link.LinkError) as e:
+                print(f"ask-serve: {e}", file=sys.stderr)
+                self._send(502, json.dumps({"error": str(e)[:200]}))
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect((p.tv["address"], 1))
+        ip = s.getsockname()[0]
+        s.close()
+    except OSError:
+        ip = "127.0.0.1"
+    httpd = http.server.ThreadingHTTPServer(("0.0.0.0", a.port), Handler)
+    print(f"Grok Bot phone page: http://{ip}:{a.port}   (open it on your phone's browser)")
+    print(f"Forwarding to {p.tv.get('name', 'the TV')} ({p.tv['address']}). Ctrl-C to stop.")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nstopped")
+    return 0
+
+
 def cmd_apps(a, cfg):
     apps = _client(cfg).apps()
     if a.json:
@@ -657,6 +762,14 @@ def main(argv=None) -> int:
     s = sub.add_parser("launch", help="open an app on the TV by package name")
     s.add_argument("package")
     s.set_defaults(fn=cmd_launch)
+    s = sub.add_parser("ask-tv", help="send a text prompt to the TV's Grok Bot (dictate on this PC)")
+    s.add_argument("text", nargs="?", help="prompt text; read from stdin when omitted")
+    s.add_argument("--run", action="store_true", help="run it on the TV immediately instead of prefilling")
+    s.set_defaults(fn=cmd_ask_tv)
+    s = sub.add_parser("ask-serve", help="serve a phone page on the LAN that sends text to the TV's Grok Bot")
+    s.add_argument("--port", type=int, default=8991)
+    s.add_argument("--run", action="store_true", help="phone submits run immediately instead of prefilling")
+    s.set_defaults(fn=cmd_ask_serve)
     s = sub.add_parser("apps", help="list the TV's apps")
     s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_apps)

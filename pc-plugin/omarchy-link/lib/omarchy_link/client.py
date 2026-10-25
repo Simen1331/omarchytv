@@ -150,6 +150,9 @@ class Client:
     def launch(self, package: str):
         return self.request("POST", "/v1/apps/launch", {"package": package})
 
+    def ask(self, text: str, run: bool = False):
+        return self.request("POST", "/v1/ask", {"text": text, "run": run})
+
     def put_theme(self, theme: dict):
         return self.request("PUT", "/v1/theme", theme)
 
